@@ -1,19 +1,28 @@
-# Little Scholars 4.2 — Reading Academy
+# Little Scholars — Reading Academy V4.3 (review branch)
 
-A static offline-friendly learning prototype for the first 4 weeks of age-five classical education.
+This branch enhances the original 20-day / four-week learning app without removing any of the existing Phonics Lab, Math Lab, storybooks or Parent Studio features.
 
-## Deploying to your existing Netlify site
+## Changes
+- New **reading-academy-upgrade.js** loads on the current index page after the main app.
+- Adds four distinct original inline SVG picture cues (mouse, snake, apple, mat) and touch-friendly word building on the 16 guided reader pages.
+- Adds a **parent sound recording studio** for /m/, /s/, short /a/, /t/. Voice recordings are recorded and saved locally in the browser via MediaRecorder; permission and HTTPS are required. Microphone audio is not uploaded.
+- Adds per-page oral decoding observations: independent / supported / needs more practice.
+- Tracks attempts and hints separately from page completion. Existing saved browser progress uses the same key as V4.2 and is left intact.
 
-Drag the *extracted folder containing index.html* onto the Deploys page of your existing Netlify project, or push these files to the GitHub repository already connected to that site. Do **not** create a new Netlify project if you want to preserve the existing URL and browser-local progress.
+## Review checklist
+1. On mobile Safari and desktop browser, open Weeks 1–4, Reading Academy.
+2. Check page turns, tap letter tiles, use remove/reset/hint/check.
+3. Check accurate phoneme playback from Parent Studio (grant microphone permission); confirm recordings replay.
+4. Check a parent oral reading observation appears in Parent Studio counts.
+5. Reopen the site and check prior completion, worldview and child name remain intact.
+6. Check all existing Phonics Lab, Math Lab, Discover, Missions and illustrated storybooks.
+7. Test the Netlify deploy preview before merging to main.
 
-## GitHub
+## Limitations
+- This is an **early functional prototype**, not a professionally illustrated or human-narrated product. The picture cards use original inline vector drawings. Accurate sounds depend on a parent's recordings.
+- Microphone recordings remain in *localStorage* as data URLs and are not synchronized or included with the existing JSON progress export. Browser storage is limited. Separate cloud-based audio storage would require an explicit privacy/security design.
+- The app cannot automatically verify spoken pronunciation. Oral reading evidence is parent-observed rather than automated speech recognition.
+- The material should be reviewed with an early-literacy specialist before being presented as a validated reading program.
 
-Create a repository, add these files at the repository root, and connect the main branch to the existing Netlify project. Publish directory is `.` and no build command is needed.
-
-## Pedagogy
-
-Week 1: phoneme discovery m, s (not independent reading). Week 2: short a, t and VC words am/at. Week 3: mat, sat. Week 4: Sam sat at a mat, with `a` explicitly taught as a heart word. The storybooks are adult read-alouds, not decodable texts. Track learning through parent observation rather than treating multiple choice as fluency evidence.
-
-## Audio and privacy
-
-Narration uses the browser's synthetic speech (not studio recordings). Word boundary highlights depend on voice support; the manual word-highlighting button works independently. Data is stored only in browser localStorage using the same key as versions 3–4.1. To preserve it, keep the same domain and browser.
+## Deployment
+Static site. Netlify publish directory: repository root. No build command. Main branch currently remains unchanged; this is for preview and review.
