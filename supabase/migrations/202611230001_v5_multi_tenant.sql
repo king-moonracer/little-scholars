@@ -196,3 +196,87 @@ grant execute on function public.save_learning_progress(uuid,jsonb,timestamptz) 
 
 -- For production, consider removing direct progress insert/update and using only the version-aware RPC.
 revoke insert,update,delete on public.learner_progress from authenticated,anon;
+
+
+-- Invitation-based school membership: one-time, email-bound, expiring.
+create table if not exists public.school_invitations (
+ id uuid primary key default gen_random_uuid(),
+ organization_id uuid not null references public.organizations(id) on delete cascade,
+ email text not null,
+ role text not null check(role in ('teacher','guardian')),
+ classroom_id uuid null references public.classrooms(id) on delete cascade,
+ learner_id uuid null references public.learners(id) on delete cascade,
+ token_hash text not null unique,
+ expires_at timestamptz not null default(now()+interval '7 days'),
+ redeemed_at timestamptz,
+ redeemed_by uuid references auth.users(id),
+ created_by uuid not null references auth.users(id),
+ created_at timestamptz not null default now(),
+ constraint invitation_target check ((role='teacher' and classroom_id is not null and learner_id is null)
+ or (role='guardian' and learner_id is not null and classroom_id is null))
+);
+create index if not exists invitations_org_idx on public.school_invitations(organization_id);
+alter table public.school_invitations enable row level security;
+-- Invitation rows deliberately have no client SELECT or write policies.
+revoke all on public.school_invitations from anon,authenticated;
+
+create or replace function public.create_school_invitation(
+ p_org uuid,p_email text,p_role text,p_target uuid)
+returns text language plpgsql security definer set search_path=''
+as $$
+declare token text; norm_email text;
+begin
+ if not private.has_role(p_org,array['owner','school_admin']) then raise exception 'Not authorized'; end if;
+ if not exists(select 1 from public.organizations where id=p_org and kind in ('school','coop'))
+ then raise exception 'Invitations are intended for schools and co-ops'; end if;
+ norm_email:=lower(trim(p_email));
+ if length(norm_email) not between 5 and 254 or norm_email not like '%_@_%._%'
+ then raise exception 'Valid email required'; end if;
+ if p_role='teacher' then
+   if not exists(select 1 from public.classrooms where id=p_target and organization_id=p_org)
+   then raise exception 'Unknown school classroom'; end if;
+ elsif p_role='guardian' then
+   if not exists(select 1 from public.learners where id=p_target and organization_id=p_org)
+   then raise exception 'Unknown school learner'; end if;
+ else raise exception 'Invalid invitation role'; end if;
+ token:=encode(gen_random_bytes(24),'hex');
+ insert into public.school_invitations(organization_id,email,role,classroom_id,learner_id,token_hash,created_by)
+ values(p_org,norm_email,p_role,
+ case when p_role='teacher' then p_target else null end,
+ case when p_role='guardian' then p_target else null end,
+ encode(digest(token,'sha256'),'hex'),(select auth.uid()));
+ return token;
+end $$;
+
+create or replace function public.redeem_school_invitation(p_token text)
+returns uuid language plpgsql security definer set search_path=''
+as $$
+declare inv public.school_invitations%rowtype; actor_email text; actor_id uuid;
+begin
+ actor_id:=(select auth.uid());
+ if actor_id is null then raise exception 'Sign in required'; end if;
+ select lower(email) into actor_email from auth.users
+ where id=actor_id and email_confirmed_at is not null;
+ if actor_email is null then raise exception 'Confirm your account email first'; end if;
+ if length(coalesce(p_token,''))<>48 then raise exception 'Invalid invitation'; end if;
+ select * into inv from public.school_invitations
+ where token_hash=encode(digest(p_token,'sha256'),'hex')
+ and redeemed_at is null and expires_at>now() for update;
+ if not found then raise exception 'Invitation expired or already used'; end if;
+ if inv.email<>actor_email then raise exception 'Invitation belongs to a different verified email'; end if;
+ insert into public.memberships(organization_id,user_id,role)
+ values(inv.organization_id,actor_id,inv.role) on conflict do nothing;
+ if inv.role='teacher' then
+   insert into public.classroom_teachers(classroom_id,user_id)
+   values(inv.classroom_id,actor_id) on conflict do nothing;
+ else
+   insert into public.learner_guardians(learner_id,user_id)
+   values(inv.learner_id,actor_id) on conflict do nothing;
+ end if;
+ update public.school_invitations set redeemed_at=now(),redeemed_by=actor_id where id=inv.id;
+ return inv.organization_id;
+end $$;
+revoke all on function public.create_school_invitation(uuid,text,text,uuid),
+ public.redeem_school_invitation(text) from public,anon;
+grant execute on function public.create_school_invitation(uuid,text,text,uuid),
+ public.redeem_school_invitation(text) to authenticated;
