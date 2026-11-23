@@ -19,7 +19,7 @@ create table if not exists public.memberships (
 create table if not exists public.classrooms (
  id uuid primary key default gen_random_uuid(),
  organization_id uuid not null references public.organizations(id) on delete cascade,
- name text not null check(length(trim(name)) between 1 and 100)),
+ name text not null check(length(trim(name)) between 1 and 100),
  created_at timestamptz not null default now(),
  unique(id,organization_id)
 );
@@ -184,6 +184,7 @@ begin
  if found and (p_expected is null or old_timestamp is distinct from p_expected) then
    raise exception 'Progress changed on another device; reload before saving';
  end if;
+ if not found and p_expected is not null then raise exception 'Progress was deleted or moved; reload'; end if;
  next_timestamp:=clock_timestamp();
  insert into public.learner_progress(learner_id,payload,updated_at,updated_by)
  values(p_learner,p_payload,next_timestamp,(select auth.uid()))
