@@ -1,6 +1,7 @@
 -- Little Scholars 5.0 — apply ONLY to a new Supabase project after review.
 -- Ownership, schools, teachers, guardians and learner progress are enforced in Postgres.
-create extension if not exists pgcrypto;
+create schema if not exists extensions;
+create extension if not exists pgcrypto with schema extensions;
 
 create table if not exists public.organizations (
  id uuid primary key default gen_random_uuid(),
@@ -239,12 +240,12 @@ begin
    if not exists(select 1 from public.learners where id=p_target and organization_id=p_org)
    then raise exception 'Unknown school learner'; end if;
  else raise exception 'Invalid invitation role'; end if;
- token:=encode(gen_random_bytes(24),'hex');
+ token:=encode(extensions.gen_random_bytes(24),'hex');
  insert into public.school_invitations(organization_id,email,role,classroom_id,learner_id,token_hash,created_by)
  values(p_org,norm_email,p_role,
  case when p_role='teacher' then p_target else null end,
  case when p_role='guardian' then p_target else null end,
- encode(digest(token,'sha256'),'hex'),(select auth.uid()));
+ encode(extensions.digest(token,'sha256'),'hex'),(select auth.uid()));
  return token;
 end $$;
 
@@ -260,7 +261,7 @@ begin
  if actor_email is null then raise exception 'Confirm your account email first'; end if;
  if length(coalesce(p_token,''))<>48 then raise exception 'Invalid invitation'; end if;
  select * into inv from public.school_invitations
- where token_hash=encode(digest(p_token,'sha256'),'hex')
+ where token_hash=encode(extensions.digest(p_token,'sha256'),'hex')
  and redeemed_at is null and expires_at>now() for update;
  if not found then raise exception 'Invitation expired or already used'; end if;
  if inv.email<>actor_email then raise exception 'Invitation belongs to a different verified email'; end if;
