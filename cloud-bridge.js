@@ -28,7 +28,8 @@ const safe = data => {
  storyReads:typeof o.storyReads==='object'&&o.storyReads&&!Array.isArray(o.storyReads)?o.storyReads:{},
  labProgress:typeof o.labProgress==='object'&&o.labProgress&&!Array.isArray(o.labProgress)?o.labProgress:{},
  storyProgress:typeof o.storyProgress==='object'&&o.storyProgress&&!Array.isArray(o.storyProgress)?o.storyProgress:{},
- readingProgress:typeof o.readingProgress==='object'&&o.readingProgress&&!Array.isArray(o.readingProgress)?o.readingProgress:{}
+ readerProgress:typeof o.readerProgress==='object'&&o.readerProgress&&!Array.isArray(o.readerProgress)?o.readerProgress:{},
+ readingRate:Number.isFinite(Number(o.readingRate))?Number(o.readingRate):0.75
  };
 };
 function status(text){
@@ -47,7 +48,7 @@ function banner(text,allowImport=false){
    if(!confirm('This will assign the previous device-only progress to this selected child. Only continue if it belongs to this learner. Import cannot be automatically undone.'))return;
    let old;try{old=JSON.parse(localStorage.getItem('little_scholars_w1_4_v3')||'null')}catch(e){}
    if(!old){status('No old browser progress found.');return}
-   api.set({...safe(old),name:api.name});importAllowed=false;
+   api.set({...safe(old),name:LSV5.name});importAllowed=false;
    btn.remove();LSV5.queue(api.get());status('Import queued; saving securely…');
  });
  element.append(btn);
