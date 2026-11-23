@@ -29,6 +29,7 @@ const safe = data => {
  labProgress:typeof o.labProgress==='object'&&o.labProgress&&!Array.isArray(o.labProgress)?o.labProgress:{},
  storyProgress:typeof o.storyProgress==='object'&&o.storyProgress&&!Array.isArray(o.storyProgress)?o.storyProgress:{},
  readerProgress:typeof o.readerProgress==='object'&&o.readerProgress&&!Array.isArray(o.readerProgress)?o.readerProgress:{},
+ decodeEvidence:typeof o.decodeEvidence==='object'&&o.decodeEvidence&&!Array.isArray(o.decodeEvidence)?o.decodeEvidence:{},
  readingRate:Number.isFinite(Number(o.readingRate))?Number(o.readingRate):0.75
  };
 };
