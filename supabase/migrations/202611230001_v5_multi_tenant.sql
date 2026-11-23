@@ -74,8 +74,8 @@ as $$ select exists(
  select 1 from public.learners l
  where l.id=learner and (
   private.has_role(l.organization_id,array['owner','school_admin'])
-  or exists(select 1 from public.learner_guardians g where g.learner_id=l.id and g.user_id=(select auth.uid()))
-  or exists(select 1 from public.classroom_teachers t where t.classroom_id=l.classroom_id and t.user_id=(select auth.uid()))
+  or (private.has_role(l.organization_id,array['guardian','teacher','owner','school_admin']) and exists(select 1 from public.learner_guardians g where g.learner_id=l.id and g.user_id=(select auth.uid())))
+  or (private.has_role(l.organization_id,array['teacher','owner','school_admin','guardian']) and exists(select 1 from public.classroom_teachers t where t.classroom_id=l.classroom_id and t.user_id=(select auth.uid())))
  )
 ) $$;
 create or replace function private.can_edit_learner(learner uuid)
@@ -101,7 +101,7 @@ create policy membership_read on public.memberships for select to authenticated
  using(user_id=(select auth.uid()) or private.has_role(organization_id,array['owner','school_admin']));
 create policy class_read on public.classrooms for select to authenticated
  using(private.has_role(organization_id,array['owner','school_admin']) or
-  exists(select 1 from public.classroom_teachers t where t.classroom_id=id and t.user_id=(select auth.uid())));
+  (private.has_role(organization_id,array['teacher','guardian']) and exists(select 1 from public.classroom_teachers t where t.classroom_id=id and t.user_id=(select auth.uid()))));
 create policy learner_read on public.learners for select to authenticated
  using(private.can_read_learner(id));
 create policy teacher_read on public.classroom_teachers for select to authenticated
@@ -115,6 +115,8 @@ create policy progress_insert on public.learner_progress for insert to authentic
 create policy progress_update on public.learner_progress for update to authenticated
  using(private.can_edit_learner(learner_id))
  with check(private.can_edit_learner(learner_id) and updated_by=(select auth.uid()));
+
+grant select on public.organizations,public.memberships,public.classrooms,public.classroom_teachers,public.learners,public.learner_guardians,public.learner_progress to authenticated;
 
 -- No direct client mutation of access-control tables. Mutations use audited RPCs.
 revoke insert,update,delete on public.organizations,public.memberships,public.classrooms,
