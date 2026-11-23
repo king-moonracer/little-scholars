@@ -14,13 +14,13 @@ async function start() {
    show('configuration', true); message('Supabase has not been configured. Existing curriculum remains available.'); return;
  }
  client = window.supabase.createClient(cfg.url,cfg.publishableKey);
- client.auth.onAuthStateChange((_event,session)=>{ queueMicrotask(()=>request(async()=>{user=session?.user||null;await refresh()})); });
+ client.auth.onAuthStateChange((event,session)=>{ if(event==='PASSWORD_RECOVERY')show('password-update',true); queueMicrotask(()=>request(async()=>{user=session?.user||null;await refresh()})); });
  const {data,error}=await client.auth.getUser();
  if(error && error.name!=='AuthSessionMissingError') message(error.message,true);
  user=data?.user||null; await refresh();
 }
 async function refresh(){
- show('auth',!user);show('workspace',!!user);show('org-detail',false);show('invite-accept',!!user && !!new URLSearchParams(location.search).get('invite'));
+ show('auth',!user);show('workspace',!!user);show('org-detail',false);show('invite-accept',!!user && !!new URLSearchParams(location.search).get('invite'));if(user && new URLSearchParams(location.search).has('recovery'))show('password-update',true);
  if(!user){message('Sign in as an adult to access private learning profiles.');return}
  $('identity').textContent=user.email||'Signed-in adult';
  message('Authenticated. Learning records are protected by Supabase access policies.');
@@ -67,9 +67,17 @@ $('signup').addEventListener('click',()=>request(async()=>{
 }));
 $('reset').addEventListener('click',()=>request(async()=>{
  const email=$('email').value.trim();if(!email)throw Error('Enter an email first.');
- checked(await client.auth.resetPasswordForEmail(email,{redirectTo:location.origin+'/portal.html'}));
+ checked(await client.auth.resetPasswordForEmail(email,{redirectTo:location.origin+'/portal.html?recovery=1'}));
  message('If that email is registered, a password reset message has been sent.'); 
 }));
+$('password-update-form').addEventListener('submit',e=>{e.preventDefault();request(async()=>{
+ const password=$('new-password').value;
+ if(password.length<8)throw Error('Use a password of at least eight characters.');
+ checked(await client.auth.updateUser({password}));
+ $('password-update-form').reset();show('password-update',false);
+ const url=new URL(location.href);url.searchParams.delete('recovery');history.replaceState(null,'',url.pathname+url.search+url.hash);
+ message('Password updated successfully.');
+})});
 $('signout').addEventListener('click',()=>request(async()=>{checked(await client.auth.signOut());user=null;activeOrg=null;await refresh()}));
 $('org-form').addEventListener('submit',e=>{e.preventDefault();request(async()=>{
  const name=$('org-name').value.trim(),kind=$('org-kind').value;
