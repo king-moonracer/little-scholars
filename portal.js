@@ -20,7 +20,7 @@ async function start() {
  user=data?.user||null; await refresh();
 }
 async function refresh(){
- show('auth',!user);show('workspace',!!user);show('org-detail',false);
+ show('auth',!user);show('workspace',!!user);show('org-detail',false);show('invite-accept',!!user && !!new URLSearchParams(location.search).get('invite'));
  if(!user){message('Sign in as an adult to access private learning profiles.');return}
  $('identity').textContent=user.email||'Signed-in adult';
  message('Authenticated. Learning records are protected by Supabase access policies.');
@@ -34,12 +34,13 @@ async function openOrg(m){
  $('org-type').textContent=(o.kind||'').toUpperCase();
  $('org-title').textContent=o.name||'Learning organization';
  $('role-title').textContent='Your role: '+m.role;
- show('org-detail',true);show('class-tools',isAdmin());show('learner-tools',isAdmin());
+ show('org-detail',true);show('class-tools',isAdmin());show('learner-tools',isAdmin());show('invitation-tools',isAdmin() && ['school','coop'].includes(o.kind));
  classes=checked(await client.from('classrooms').select('id,name').eq('organization_id',m.organization_id).order('name'))||[];
  learners=checked(await client.from('learners').select('id,display_name,stage,classroom_id,worldview').eq('organization_id',m.organization_id).order('display_name'))||[];
  $('class-count').textContent=String(classes.length);
  $('learner-count').textContent=String(learners.length);
  $('learner-class').innerHTML='<option value="">No classroom</option>'+classes.map(c=>'<option value="'+esc(c.id)+'">'+esc(c.name)+'</option>').join('');
+ updateInviteTargets();
  $('learners').innerHTML=learners.length?learners.map(l=>{
    const cl=classes.find(c=>c.id===l.classroom_id);
    return '<div class="tile"><h3>📚 '+esc(l.display_name)+'</h3><p class="muted">'+esc(l.stage)+' · '+esc(cl?.name||'Individual learning')+'</p><div class="buttons"><a class="action primary" href="./index.html?learner='+encodeURIComponent(l.id)+'">Open learning dashboard</a><button data-report="'+esc(l.id)+'" type="button">View progress</button></div><div class="status" id="report-'+esc(l.id)+'"></div></div>'
@@ -85,5 +86,36 @@ $('learner-form').addEventListener('submit',e=>{e.preventDefault();request(async
  checked(await client.rpc('add_learning_learner',{p_org:activeOrg.organization_id,p_name:$('learner-name').value.trim(),p_classroom:$('learner-class').value||null}));
  $('learner-form').reset();await openOrg(activeOrg);message('Child profile created. Consider importing existing on-device progress using the learning dashboard.');
 })});
+
+function updateInviteTargets(){
+ const role=$('invite-role').value,items=role==='teacher'?classes:learners;
+ $('invite-target').innerHTML=items.length?items.map(item=>'<option value="'+esc(item.id)+'">'+esc(role==='teacher'?item.name:item.display_name)+'</option>').join(''):'<option value="">Create a '+(role==='teacher'?'classroom':'learner profile')+' first</option>';
+}
+$('invite-role').addEventListener('change',updateInviteTargets);
+$('invite-form').addEventListener('submit',e=>{e.preventDefault();request(async()=>{
+ if(!isAdmin()||!['school','coop'].includes(activeOrg.organizations?.kind))throw Error('School admin access required.');
+ const target=$('invite-target').value;
+ if(!target)throw Error('Choose a classroom or child before inviting.');
+ const token=checked(await client.rpc('create_school_invitation',{
+ p_org:activeOrg.organization_id,p_email:$('invite-email').value.trim(),
+ p_role:$('invite-role').value,p_target:target
+ }));
+ const link=new URL('./portal.html',location.href);
+ link.searchParams.set('invite',token);
+ const output=$('invite-result');output.innerHTML='';
+ const p=document.createElement('p');p.textContent='Copy this one-time invitation link and send it privately to the intended adult. It cannot be retrieved again from the database.';
+ const input=document.createElement('input');input.value=link.toString();input.readOnly=true;input.setAttribute('aria-label','Private invitation URL');
+ const copy=document.createElement('button');copy.type='button';copy.textContent='Copy private invitation link';copy.addEventListener('click',async()=>{try{await navigator.clipboard.writeText(input.value);message('Invitation link copied.')}catch(e){input.select();message('Select and copy the link manually.')}});
+ output.append(p,input,copy);show('invite-result',true);message('One-time invitation created. Send the private link to the invited adult.');
+})});
+$('accept-invite').addEventListener('click',()=>request(async()=>{
+ const token=new URLSearchParams(location.search).get('invite');
+ if(!token)throw Error('Missing invitation token.');
+ if(!user)throw Error('Sign in as the invited adult first.');
+ checked(await client.rpc('redeem_school_invitation',{p_token:token}));
+ const url=new URL(location.href);url.searchParams.delete('invite');history.replaceState(null,'',url.pathname+url.search+url.hash);
+ show('invite-accept',false);await refresh();message('Invitation accepted. Your authorized school is now available.');
+}));
+
 start().catch(e=>{show('configuration',true);message('Could not initialize: '+e.message,true)});
 })();
