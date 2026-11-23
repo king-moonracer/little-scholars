@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer"><meta name="theme-color" content="#244f51"><title>Little Scholars · Family & School Portal</title>
+<style>
+:root{font-family:ui-rounded,"Avenir Next",system-ui,sans-serif;color:#264448;background:#f8f7ef}
+*{box-sizing:border-box}body{margin:0}main{max-width:1030px;margin:0 auto;padding:24px 18px 70px}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+h1,h2,h3{margin:0 0 10px}h1{font-family:Georgia,serif;font-size:clamp(30px,6vw,48px)}p{line-height:1.55}
+.card{border:1px solid #dce4dd;background:white;border-radius:22px;padding:24px;margin:18px 0;box-shadow:0 6px 20px #23443e0a}
+.brand{font-size:22px;font-weight:900;color:#244f51}.muted{color:#667c77}
+form{display:grid;gap:12px;margin:16px 0}.fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}
+label{font-weight:750;font-size:14px;display:grid;gap:6px}
+input,select{padding:13px;border:1px solid #b9cbc4;border-radius:11px;font:inherit;width:100%;background:white;color:#264448}
+button,.action{font:inherit;font-weight:800;padding:12px 16px;border-radius:12px;border:1px solid #d2dcd5;background:white;color:#244f51;cursor:pointer;text-decoration:none}
+button.primary,.action.primary{background:#244f51;color:white;border-color:#244f51}
+button:disabled{opacity:.6;cursor:wait}.buttons{display:flex;flex-wrap:wrap;gap:10px;margin:12px 0}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(225px,1fr));gap:14px}
+.tile{padding:19px;border:1px solid #d6e4d7;border-radius:17px;background:#f6faf5}
+.tile h3{margin-top:0}.eyebrow{text-transform:uppercase;font-size:12px;letter-spacing:2px;color:#6f837b;font-weight:800}
+.notice{border-radius:13px;background:#e9f3eb;padding:14px;margin:12px 0}.warning{background:#fff1dc}
+.status{min-height:24px;color:#335d50;font-weight:650}
+.hidden{display:none!important}
+small{font-size:12px}.list{display:grid;gap:10px}a{color:#1d6158}button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #daaa54;outline-offset:2px}
+@media(max-width:600px){.card{padding:17px}.buttons button{width:100%}}
+</style>
+<script src="./v5-config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script defer src="./portal.js"></script>
+</head><body><main>
+<header><div class="brand">📚 Little Scholars <small class="muted">V5 · Family & School Portal</small></div><a href="./index.html" class="action">Original curriculum</a></header>
+<section class="card"><span class="eyebrow">Grammar → Logic → Rhetoric</span><h1>Every learner has their own journey.</h1><p class="muted">Parents, teachers, and school leaders see the dashboards they need—without mixing children's progress between families or classes.</p><div id="status" class="status" role="status" aria-live="polite">Loading account portal…</div></section>
+<section id="configuration" class="card hidden"><h2>Supabase setup required</h2><p>This review build needs a Supabase project and its public URL and publishable key in <code>v5-config.js</code>. Set up the SQL migration first; no live accounts are created until configuration is complete.</p></section>
+<section id="auth" class="card hidden"><h2>Parent & educator sign in</h2><form id="auth-form"><div class="fields"><label>Email address<input id="email" type="email" autocomplete="email" required></label><label>Password<input id="password" type="password" autocomplete="current-password" minlength="8" required></label></div><div class="buttons"><button type="submit" class="primary">Sign in</button><button type="button" id="signup">Create adult account</button><button type="button" id="reset">Reset password</button></div></form><p class="muted">Children do not need email addresses. An adult signs in and selects the learner profile.</p></section>
+<section id="password-update" class="card hidden"><h2>Choose a new password</h2><form id="password-update-form"><label>New password<input id="new-password" type="password" autocomplete="new-password" minlength="8" required></label><button class="primary" type="submit">Update password</button></form></section>
+<section id="invite-accept" class="card hidden"><h2>School invitation</h2><p>After signing in with the invited, verified email address, accept your access to a school classroom or your child's profile.</p><button class="primary" type="button" id="accept-invite">Accept invitation</button><p class="muted">Invitations expire after seven days and can only be used once.</p></section><section id="workspace" class="hidden">
+ <div class="card"><div class="buttons" style="justify-content:space-between"><h2 id="welcome">Dashboard</h2><button type="button" id="signout">Sign out</button></div><p class="muted" id="identity"></p>
+ <h3>Your organizations</h3><div id="orgs" class="grid"></div>
+ <details style="margin-top:20px"><summary><strong>Add a family, school, or homeschool co-op</strong></summary><form id="org-form" class="fields"><label>Organization name<input id="org-name" maxlength="120" required placeholder="My Learning Family"></label><label>Type<select id="org-kind"><option value="family">Family</option><option value="school">School</option><option value="coop">Homeschool co-op</option></select></label><button class="primary">Create organization</button></form></details></div>
+ <section id="org-detail" class="card hidden"><span class="eyebrow" id="org-type"></span><h2 id="org-title"></h2><p id="role-title" class="muted"></p>
+ <div class="grid"><div class="tile"><h3>Learners</h3><p id="learner-count">—</p></div><div class="tile"><h3>Classrooms</h3><p id="class-count">—</p></div><div class="tile"><h3>Learning stage</h3><p>Grammar · Weeks 1–4</p></div></div>
+ <section id="class-tools" class="hidden"><h3>Add a classroom</h3><form id="class-form" class="fields"><label>Classroom name<input id="class-name" placeholder="Grammar A" maxlength="100" required></label><button class="primary">Create classroom</button></form></section>
+ <section id="learner-tools" class="hidden"><h3>Add a learner</h3><form id="learner-form" class="fields"><label>Child's preferred name<input id="learner-name" maxlength="50" required placeholder="First name or nickname"></label><label>Classroom (optional)<select id="learner-class"><option value="">No classroom</option></select></label><button class="primary">Create learner profile</button></form></section>
+ <section id="invitation-tools" class="hidden"><h3>Invite teachers or guardians</h3><p class="muted">School owners and admins can create one-time, seven-day invitations. Each invitation is bound to the recipient's verified email and grants access only to one classroom or learner.</p><form id="invite-form" class="fields"><label>Adult email<input type="email" id="invite-email" required placeholder="teacher@example.com"></label><label>Access role<select id="invite-role"><option value="teacher">Teacher — assigned classroom</option><option value="guardian">Guardian — linked child</option></select></label><label>Assigned classroom or learner<select id="invite-target" required></select></label><button class="primary" type="submit">Create secure invitation</button></form><div id="invite-result" class="notice hidden" role="status"></div></section>
+ <h3>My authorized learners</h3><div id="learners" class="grid"></div>
+ <div class="notice"><strong>Access control:</strong> School administrators can see their school's learners; teachers only their assigned classrooms; guardians only their linked children. Learner dashboards are opened in a separate, protected learning session. School staff invitations require a verified administrator workflow (not included in this first release).</div>
+ </section>
+</section>
+<footer><p class="muted">Adults manage accounts. Children's learning data is private. This is a review build—do not onboard real students before privacy and security review.</p></footer>
+</main></body></html>
