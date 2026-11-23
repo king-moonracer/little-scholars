@@ -14,7 +14,7 @@ const dayKey=()=>store.week+'-'+store.day, lesson=()=>DATA.days.find(d=>d.week==
 const answered=(type)=>store.answers[dayKey()+':'+type]===true;
 const weekCompleted=(n)=>[1,2,3,4,5].filter(d=>store.completion[n+'-'+d]).length;
 function speak(s){if(!('speechSynthesis'in window)){alert('Speech playback is unavailable in this browser. A parent can read the words aloud.');return;}speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(s);u.lang='en-US';u.rate=.80;u.pitch=1.08;speechSynthesis.speak(u)}
-function navigate(view){store.view=view;save();render();window.scrollTo?.(0,0)}
+function navigate(view){if(window.LSV5&&view==='parent'){location.assign('./portal.html');return;}store.view=view;save();render();window.scrollTo?.(0,0)}
 function selectWeek(n){store.week=n;store.day=1;store.view='child';store.section='phonics';save();render();document.getElementById('app')?.scrollIntoView?.({behavior:'instant',block:'start'})}
 function selectDay(n){store.day=n;store.section='phonics';store.view='child';save();render()}
 function section(s){if(s==='story'){openBook();return;}if(s==='reading'){openReading();return;}store.section=s;save();render()}
